@@ -1,0 +1,6 @@
+; $Id: ecomm_login.info,v 0.1 2010/11/07 19:00:07 lateporter Exp $
+name = Ecomm Login
+description = Adds integration with Wtgroup Ecomm
+core = 6.x
+php = 5.1
+package = Wtgroupllc

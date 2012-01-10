@@ -1,0 +1,86 @@
+<?php
+// $Id: news_create.module,v 0.1 2010/11/07 19:00:07 looprecur Exp $
+
+/**
+ * @file
+ * Adds a url to create a news
+ */
+
+// function postParams() {
+// 	$vars = array("userid" => $this->_post_data['userid'], "password" => $this->_post_data['password'], "userAction" => "authenticate", "submit" => "submit");
+// 	$data = "";
+// 	foreach ($vars as $Index => $Value) 
+// 	        $data .= urlencode($Index) . "=" . urlencode($Value) . "&";
+// 	return $data;
+// }
+
+function news_create_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  switch ($op) {
+    case 'insert':
+			if($node->type != 'news') {
+				return true;
+			}
+			// $nids = array();
+			$refs = array();
+			// $device_ids = array();
+			
+			// foreach ($node->field_reference_booger as $Index => $Value) {
+			// 	foreach ($Value as $Ind => $Val) {
+			// 		array_push($nids, $Val);
+			// 	}
+			// }
+			// 
+			// foreach ($nids as $i => $v) {
+			// 	array_push($refs, node_load($v));
+			// }
+			// 
+			// foreach ($refs as $i => $v) {
+			// 	array_push($device_ids, $v->device_id);
+			// }
+			// 
+			// $headers = array('Content-type' => 'application/x-www-form-urlencoded');
+			// $response = drupal_http_request('http://webcapsule.com/testingAir', $headers, "POST", array("nid" => $node-nid));
+
+			$result = db_query_range('SELECT nid, title FROM {node} WHERE title = "%s" AND type = "%s"', 'testers7', 'news', 0, 10);
+		  while ($node = db_fetch_object($result)) {
+				array_push($refs, $node);
+		  }
+		  
+			
+			print var_dump($refs);
+			exit(0);
+			// return $response->data;
+      // $node contains the newly created node
+      // break;
+  }
+}
+
+function news_create_menu() {
+  $items = array();
+	
+	$items['news/add'] = array(
+    'title' => 'Submitting',
+		'access callback' => TRUE,
+		'page callback' => '_news_create',
+    'description' => 'Creating news',
+    'type' => MENU_CALLBACK,
+  );
+
+	return $items;
+}
+
+function _news_create() {
+	module_load_include('inc', 'node', 'node.pages');
+	$news = new StdClass();
+	
+	$node = array('type' => 'news');
+	$nid = $_GET['nid'];
+	$older = node_load($nid);
+	$news->title = $older->title;
+	
+	node_save($news);
+	drupal_set_header('Content-Type: text/plain');
+	
+  print $news->nid;
+  exit(0);
+}

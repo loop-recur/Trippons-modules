@@ -1,0 +1,50 @@
+<?php
+// $Id: coupon_submission_create.module,v 0.1 2010/11/07 19:00:07 looprecur Exp $
+
+/**
+ * @file
+ * Adds a url to create a coupon_submission
+ */
+
+
+function coupon_submission_create_menu() {
+  $items = array();
+	
+	$items['coupon_submission/add'] = array(
+    'title' => 'Submitting',
+		'access callback' => TRUE,
+		'page callback' => '_coupon_submission_create',
+    'description' => 'Creating coupon submission',
+    'type' => MENU_CALLBACK,
+  );
+
+	return $items;
+}
+
+function _coupon_submission_create() {
+	module_load_include('inc', 'node', 'node.pages');
+	$nid = $_POST['nid'];
+	
+	
+	if ( $business = node_load($nid) ) {
+		$submission = new StdClass();
+		$submission->type = 'coupon_submission';
+		$submission->title = $business->nid . '-XXXX';
+		$submission->uid = $business->uid;
+		$submission->status = 0;
+		$submission->promote = 0;
+		node_save($submission);
+		$couponDetails = $business->field_coupon_description[0]['value'];
+		$couponDetails .= '\n' . $business->field_coupon_disclaimer[0]['value'];
+		$submission->title = $business->nid . '-' . $submission->nid;
+		$submission->field_coup_sub_business[0]['nid'] = intval($business->nid);
+		$submission->field_coup_sub_type_details[0]['value'] = $couponDetails;
+		node_save($submission);
+		if ( $business->field_coupon_expiration_type[0]['value'] == 'redemptions' ) {
+			$business->field_coupon_exp_redemptions[0]['value']--;
+			node_save($business);
+		}
+	  print $submission->nid;
+	  exit(0);
+	}
+}	

@@ -1,0 +1,187 @@
+<?php
+// $Id: urban_airship.module,v 0.1 2010/11/07 19:00:07 looprecur Exp $
+
+/**
+ * @file
+ * Sends push to devices on business create
+ */
+
+function urban_airship_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  switch ($op) {
+    case 'insert':
+			sendIfOkay($node);
+		case 'update':
+			sendIfOkay($node);
+  }
+}
+
+function sendIfOkay($node) {
+	if($node->type != 'business' || $node->status != 1) {
+		return true;
+	} else {
+		return sendNotifications($node);
+	}
+}
+
+function sendNotifications($node) {
+	$msg = $node->title.': '.$node->field_coupon_description[0]["value"];
+	
+	$subscriptions = getSubscriptionsForBusinessName($node->title);
+	$iphone_ids = array();
+	$android_ids = array();
+	
+	foreach ($subscriptions as $Index => $Value) {
+		if($Value->field_device_type_value == "iphone") {
+			if(!empty($Value->field_device_id_value)) {
+				array_push($iphone_ids, $Value->field_device_id_value);
+			}			
+		} else {
+			if(!empty($Value->field_device_id_value)) {
+				array_push($android_ids, $Value->field_device_id_value);
+			}
+		}
+	}
+	
+	if(!empty($iphone_ids)) {
+		pushToIPhones($iphone_ids, $msg);
+	}
+	
+	if(!empty($android_ids)) {
+		pushToAndroids($android_ids, $msg);
+	}
+}
+
+function pushToIPhones($device_ids, $msg) {
+	$app_key = "lUHufHBLTfy0XtxCQvFmUA";
+	$app_secret = "ZYzU6TOEQm2FVLkh4ORUnw";
+	
+	
+	$headers = array('Content-type' => 'application/json', "Authorization" => 'Basic '. base64_encode($app_key.":".$app_secret));
+	$data = '{"device_tokens": ["'.join('","', $device_ids).'"], "aps": {"alert": "'.$msg.'"}}';
+	drupal_http_request('https://go.urbanairship.com/api/push/', $headers, "POST", $data);
+}
+
+function getSubscriptionsForBusinessName($name) {
+	$subscriptions = array();
+				
+	$result = db_query_range('SELECT field_device_id_value, field_device_type_value FROM {content_type_subscription} WHERE field_business_value = "%s"', $name, 0, 1000);
+	
+  while ($subscription = db_fetch_object($result)) {
+		array_push($subscriptions, $subscription);
+  }
+
+	return $subscriptions;
+}
+
+function pushToAndroids($device_ids, $msg) {
+	$auth_token = googleAuthenticate("lightning.sounds.like.thunder@gmail.com", "youiyoui");
+	if($auth_token != null) {
+		foreach ($device_ids as $Index => $Value) {
+			sendMessageToAndroid($auth_token, $Value, "new_coupon", $msg);
+		}
+	} else {
+		print("failed auth:");
+		exit(0);
+	}
+}
+
+/*
+*
+*   $username - your gmail email address you white listed with the c2dm service
+*   $passwors - password for above gmail account.
+*/
+function googleAuthenticate($username, $password, $source="com.looprecur.trippons", $service="ac2dm") {     
+ 
+    if( isset($_SESSION['google_auth_id']) && $_SESSION['google_auth_id'] != null) 
+        return $_SESSION['google_auth_id']; 
+ 
+    // get an authorization token 
+    $ch = curl_init(); 
+    if(!$ch){ 
+        return false; 
+    } 
+ 
+    curl_setopt($ch, CURLOPT_URL, "https://www.google.com/accounts/ClientLogin"); 
+    $post_fields = "accountType=" . urlencode('HOSTED_OR_GOOGLE') 
+        . "&Email=" . urlencode($username) 
+        . "&Passwd=" . urlencode($password) 
+        . "&source=" . urlencode($source) 
+        . "&service=" . urlencode($service); 
+    curl_setopt($ch, CURLOPT_HEADER, true); 
+    curl_setopt($ch, CURLOPT_POST, true); 
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields); 
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
+    curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);     
+    curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY); 
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
+ 
+    // for debugging the request 
+    //curl_setopt($ch, CURLINFO_HEADER_OUT, true); // for debugging the request 
+ 
+    $response = curl_exec($ch); 
+    // echo $response;
+    // var_dump(curl_getinfo($ch)); //for debugging the request 
+    // var_dump($response); 
+ 
+    curl_close($ch); 
+ 
+    if (strpos($response, '200 OK') === false) { 
+ 
+        echo "200 Not Ok";
+        return false; 
+    } 
+ 
+    // find the auth code 
+    preg_match("/(Auth=)([\w|-]+)/", $response, $matches); 
+ 
+    if (!$matches[2]) { 
+        echo "No Match";
+        return false; 
+    } 
+ 
+    $_SESSION['google_auth_id'] = $matches[2]; 
+     echo $matches[2]; 
+ 
+     return $_SESSION['google_auth_id'];
+} 
+ 
+ 
+/*
+*
+*   $authCode - the authcode returned when you ran the googleAuthenticate function
+*   $deviceRegistrationId - registrationID returned by the device receiving the message
+*   $$msgType - can be anything i.e. 'chat message'
+*   $messageText - text to be sent
+*/
+ 
+ 
+function sendMessageToAndroid($authCode, $deviceRegistrationId, $msgType, $messageText) { 
+ 
+        $headers = array('Authorization: GoogleLogin auth=' . $authCode); 
+        $data = array( 
+            'registration_id' => $deviceRegistrationId, 
+            'collapse_key' => $msgType, 
+            'data.message' => $messageText //TODO Add more params with just simple data instead            
+        ); 
+ 
+        $ch = curl_init(); 
+ 
+        curl_setopt($ch, CURLOPT_URL, "https://android.apis.google.com/c2dm/send"); 
+        if ($headers) 
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
+        curl_setopt($ch, CURLOPT_POST, true); 
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data); 
+ 
+ 
+        $response = curl_exec($ch); 
+				// print($response);
+				// exit(0);
+
+ 
+        curl_close($ch); 
+ 
+        // echo $response; 
+} 
+?>

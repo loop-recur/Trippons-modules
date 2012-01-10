@@ -1,0 +1,6 @@
+; $Id: news_create.info,v 0.1 2010/11/07 19:00:07 looprecur Exp $
+name = News Create
+description = Create a news from /news/add?nid=x
+core = 6.x
+php = 5.1
+package = LoopRecur

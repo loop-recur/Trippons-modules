@@ -1,0 +1,76 @@
+<?php
+
+// $Id: subscriptions_create.module,v 0.1 2010/11/07 19:00:07 looprecur Exp $
+
+/**
+ * @file
+ * Creates subscriptions
+ */
+
+
+
+function subscription_create_menu() {
+  $items = array();
+	
+	$items['subscription/add'] = array(
+    'title' => 'Submitting',
+		'access callback' => TRUE,
+		'page callback' => '_subscription_create',
+    'description' => 'Creating subscription',
+    'type' => MENU_CALLBACK,
+  );
+
+	$items['subscription/delete'] = array(
+	  'title' => 'Deleting',
+		'access callback' => TRUE,
+		'page callback' => '_subscription_delete',
+	  'description' => 'Delete subscription',
+	  'type' => MENU_CALLBACK,
+	);
+
+
+	return $items;
+}
+
+function _subscription_create() {
+	module_load_include('inc', 'node', 'node.pages');
+	
+	$result = db_query_range('SELECT nid FROM {content_type_subscription} WHERE field_business_value = "%s" AND field_device_id_value = "%s"', $_POST['business'], $_POST['device_id'], 0, 1);
+	if(db_fetch_object($result)) return;
+	
+	$subscription = new StdClass();
+	
+	$subscription->type = 'subscription';
+	$subscription->title = $_POST['device_id'] ." - ". $_POST['business'];
+	$subscription->field_device_id[0]['value'] = $_POST['device_id'];
+	$subscription->field_device_type[0]['value'] = $_POST['device_type'];
+	$subscription->field_business[0]['value'] = $_POST['business'];
+	
+	node_save($subscription);
+	drupal_set_header('Content-Type: text/plain');
+	
+  print '{"nid": "'.$subscription->nid.'", "device_id": "'.$subscription->field_device_id[0]['value'].'", "business": "'.$subscription->field_business[0]['value'].'"}';
+  exit(0);
+}
+
+function _subscription_delete() {
+	module_load_include('inc', 'node', 'node.pages');
+	$subscription = new StdClass();
+	$subscription_id = $_POST['id'];
+	$subscription = node_load($subscription_id);
+	
+	if($subscription->type != "subscription") {
+		print "{nid : ".$subscription_id."}";
+	  exit(0);
+	}
+	
+	db_query('DELETE FROM {node} WHERE nid = %d', $subscription_id);
+  db_query('DELETE FROM {node_revisions} WHERE nid = %d', $subscription_id);
+  db_query('DELETE FROM {node_access} WHERE nid = %d', $subscription_id);
+	db_query('DELETE FROM {content_type_subscription} WHERE nid = %d', $subscription_id);
+  
+	drupal_set_header('Content-Type: text/plain');
+	
+  print '{"nid" : "'.$subscription_id.'"}';
+  exit(0);
+}

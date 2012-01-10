@@ -1,0 +1,59 @@
+<?php
+// $Id: ecomm_login.module,v 0.1 2010/11/07 19:00:07 lateporter Exp $
+
+/**
+ * @file
+ * Provides a form that uses Wtgroupllc's api to authenticate
+ */
+
+function ecomm_login_block($op = 'list', $delta = 0, $edit = array()) {
+	switch ($op) {
+        case 'list':
+            $blocks[0]['info'] = t('Log in form to WtGroup');
+            return $blocks;
+
+        case 'view':
+				    $block['subject'] = t('Log in to WtGroup');
+				    $block['content'] = drupal_get_form("ecomm_login_callback");
+				    return $block;
+    }
+}
+
+
+function ecomm_login_callback(&$form_state) {
+  $form['userid'] = array(
+		'#type' => 'textfield',
+		'#title' => t('user id')
+	);
+	
+  $form['password'] = array(
+		'#type' => 'password',
+		'#title' => t('password')
+	);
+	
+	$form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Login'),
+  );
+	
+  return $form;
+}
+
+
+function ecomm_login_callback_submit(&$form, &$form_state) {
+		module_load_include('lib.php', 'ecomm_login');
+		$authenticator = WtGroupAuthenticator::create($_POST);
+		
+	  if ($authenticator->isAuthenticated()) {
+	  		// setSessionCookie($authenticator->cookie());
+				$form_state['redirect'] = "http://www-dev1.wtgroupllc.com/drupal/sites/all/themes/wtgrouptheme/login.php";
+  	} else {
+ 				drupal_set_message($authenticator->message());
+  			$form_state['redirect'] = "";
+  	}
+}
+
+
+function setSessionCookie($cookie) {
+	setcookie("user", $cookie, time()+3600, '/', '.wtgroupllc.com');
+}

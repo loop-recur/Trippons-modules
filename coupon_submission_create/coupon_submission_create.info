@@ -1,0 +1,6 @@
+; $Id: coupon_submission_create.info,v 0.1 2010/11/07 19:00:07 looprecur Exp $
+name = Coupon Submission Create
+description = Create a coupon_submission from /coupon_submission/add?nid=x
+core = 6.x
+php = 5.1
+package = LoopRecur
